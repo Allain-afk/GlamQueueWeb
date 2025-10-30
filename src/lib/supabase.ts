@@ -4,19 +4,28 @@ import { createClient } from '@supabase/supabase-js';
 const url = import.meta.env.VITE_SUPABASE_URL;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Validate environment variables
-if (!url) {
-  throw new Error('Missing VITE_SUPABASE_URL environment variable');
+// Validate environment variables (don't throw - allow app to render)
+let supabaseInstance;
+
+if (!url || !anon) {
+  // Log warnings but don't crash the app
+  console.error('⚠️ Missing Supabase environment variables!');
+  console.error('Required: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+  console.error('Please set these in Vercel environment variables');
+  
+  // Create a dummy client to prevent crashes
+  // This allows the app to render with an error message instead of white screen
+  const dummyUrl = url || 'https://placeholder.supabase.co';
+  const dummyAnon = anon || 'placeholder-key';
+  
+  supabaseInstance = createClient(dummyUrl, dummyAnon, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  });
+} else {
+  supabaseInstance = createClient(url, anon, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  });
 }
 
-if (!anon) {
-  throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable');
-}
-
-console.log('Supabase URL:', url);
-console.log('Supabase Anon Key:', anon ? 'Present' : 'Missing');
-
-export const supabase = createClient(url, anon, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-});
+export const supabase = supabaseInstance;
 
