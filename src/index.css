@@ -1,0 +1,210 @@
+/* Import Redesigned Landing Page Styles */
+@import "./styles/components/redesigned-landing.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #ffffff;
+  color: #000000;
+  line-height: 1.6;
+}
+
+/* Basic Reset */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Custom Admin Dashboard Styles - Matching GlamQueue Brand Colors */
+.admin-dashboard {
+  background: linear-gradient(135deg, #fce4ec 0%, #f8e8ee 50%, #fff0f5 100%);
+}
+
+.admin-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(233, 30, 140, 0.1),
+    0 2px 4px -1px rgba(233, 30, 140, 0.06);
+  border: 1px solid rgba(233, 30, 140, 0.1);
+}
+
+.admin-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(233, 30, 140, 0.15),
+    0 4px 6px -2px rgba(233, 30, 140, 0.1);
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+.admin-button {
+  background: linear-gradient(135deg, #e91e8c 0%, #d81b60 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-button:hover {
+  background: linear-gradient(135deg, #d81b60 0%, #c2185b 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(233, 30, 140, 0.4);
+}
+
+.admin-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid rgba(233, 30, 140, 0.2);
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.admin-input:focus {
+  outline: none;
+  border-color: #e91e8c;
+  box-shadow: 0 0 0 3px rgba(233, 30, 140, 0.1);
+}
+
+.admin-header {
+  background: white;
+  box-shadow: 0 1px 3px 0 rgba(233, 30, 140, 0.1),
+    0 1px 2px 0 rgba(233, 30, 140, 0.06);
+  border-bottom: 1px solid rgba(233, 30, 140, 0.1);
+}
+
+.admin-nav-tab {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.admin-nav-tab.active {
+  background: rgba(233, 30, 140, 0.1);
+  color: #e91e8c;
+  border: 1px solid rgba(233, 30, 140, 0.2);
+}
+
+.admin-nav-tab:hover:not(.active) {
+  background: rgba(233, 30, 140, 0.05);
+  color: #e91e8c;
+}
+
+.admin-stats-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 6px -1px rgba(233, 30, 140, 0.1),
+    0 2px 4px -1px rgba(233, 30, 140, 0.06);
+  border: 1px solid rgba(233, 30, 140, 0.1);
+  transition: all 0.3s ease;
+}
+
+.admin-stats-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(233, 30, 140, 0.15),
+    0 4px 6px -2px rgba(233, 30, 140, 0.1);
+  transform: translateY(-2px);
+}
+
+.admin-table {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+
+.admin-table th {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 16px 24px;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-table td {
+  padding: 16px 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.admin-table tr:hover {
+  background: #f8fafc;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-confirmed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-completed {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
