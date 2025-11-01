@@ -83,4 +83,4 @@ Private - All rights reserved
 ---
 
 Built with ❤️ for salon owners everywhere
-# GlamQueueWeb
+# GlamQueue
