@@ -20,6 +20,19 @@ export async function getMyProfile(): Promise<Profile | null> {
 }
 
 export async function createProfile(userId: string, email: string | null): Promise<Profile> {
+  // First, check if profile already exists
+  const { data: existingProfile, error: checkError } = await supabase
+    .from('profiles')
+    .select('id,email,role,created_at')
+    .eq('id', userId)
+    .single();
+
+  // If profile exists, return it (ignore PGRST116 which means "not found")
+  if (existingProfile && !checkError) {
+    return existingProfile as Profile;
+  }
+
+  // If profile doesn't exist (or error is PGRST116 "not found"), create it
   const { data, error } = await supabase
     .from('profiles')
     .insert({
@@ -27,16 +40,19 @@ export async function createProfile(userId: string, email: string | null): Promi
       email: email,
       role: 'client', // Default role for new sign-ups
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     })
     .select()
     .single();
   
   if (error) {
-    // If profile already exists, try to get it
+    // If profile already exists (race condition), try to get it
     if (error.code === '23505') { // Unique violation
-      const existing = await getMyProfile();
-      if (existing) return existing;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id,email,role,created_at')
+        .eq('id', userId)
+        .single();
+      if (profile) return profile as Profile;
     }
     throw error;
   }

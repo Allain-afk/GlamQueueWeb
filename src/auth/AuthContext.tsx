@@ -1,14 +1,19 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import type { Session, User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { createAndStoreOTP, sendOTPEmail, verifyOTP } from '../api/otp';
 
+type AuthResponse = {
+  user?: User | null;
+  session?: Session | null;
+};
+
 type Ctx = {
   session: Session | null;
-  signInWithEmail: (email: string, password: string) => Promise<{ error?: any }>;
-  signUpWithEmail: (email: string, password: string) => Promise<{ data?: any; error?: any }>;
-  sendOTP: (email: string, password: string) => Promise<{ error?: any }>;
-  verifyOTPCode: (email: string, code: string) => Promise<{ data?: any; error?: any }>;
+  signInWithEmail: (email: string, password: string) => Promise<{ error?: AuthError }>;
+  signUpWithEmail: (email: string, password: string) => Promise<{ data?: AuthResponse; error?: AuthError }>;
+  sendOTP: (email: string, password: string) => Promise<{ code?: string; error?: Error | AuthError }>;
+  verifyOTPCode: (email: string, code: string) => Promise<{ data?: AuthResponse; error?: Error | AuthError }>;
   signOut: () => Promise<void>;
 };
 
@@ -23,17 +28,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const signInWithEmail = (email: string, password: string) =>
-    supabase.auth.signInWithPassword({ email, password });
+  const signInWithEmail = async (email: string, password: string) => {
+    const result = await supabase.auth.signInWithPassword({ email, password });
+    return { error: result.error || undefined };
+  };
 
-  const signUpWithEmail = (email: string, password: string) =>
-    supabase.auth.signUp({ 
+  const signUpWithEmail = async (email: string, password: string) => {
+    const result = await supabase.auth.signUp({ 
       email, 
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       }
     });
+    return { 
+      data: result.data ? { user: result.data.user, session: result.data.session } : undefined,
+      error: result.error || undefined
+    };
+  };
 
   const sendOTP = async (email: string, password: string) => {
     // Generate and store OTP
@@ -42,21 +54,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (createError) {
       // If table doesn't exist, we'll still generate the code but log it
       console.warn('Could not store OTP in database:', createError);
-      console.log(`Generated OTP for ${email}: ${code}`);
+      // Continue anyway - code is still generated
     }
 
-    // Send OTP via email
-    const { error: sendError } = await sendOTPEmail(email, code);
+    // Send OTP via email (this will also log to console)
+    const { code: returnedCode, error: sendError } = await sendOTPEmail(email, code);
     
     if (sendError) {
-      return { error: sendError };
+      // Even if sending fails, the code is logged in sendOTPEmail
+      return { error: sendError, code: returnedCode || code };
     }
 
-    // For development: Also log the code to console
-    console.log(`🔐 OTP Code for ${email}: ${code}`);
-    console.log('📧 In production, this code would be sent via email');
-
-    return {};
+    return { code: returnedCode || code };
   };
 
   const verifyOTPCode = async (email: string, code: string) => {
@@ -67,20 +76,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: verifyError || new Error('Invalid verification code') };
     }
 
-    // Create account with the password
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+    // Create account using Edge Function (Admin API)
+    // This bypasses the Email provider requirement and creates user directly
+    try {
+      const { data: createUserData, error: createError } = await supabase.functions.invoke('create-user', {
+        body: { email, password }
+      });
+
+      if (createError) {
+        return { error: createError };
       }
-    });
 
-    if (signUpError) {
-      return { error: signUpError };
+      if (!createUserData?.user) {
+        return { error: new Error('Failed to create user account') };
+      }
+
+      // Sign in the user automatically after account creation
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        // If sign in fails, return the user data - user will need to manually login
+        console.warn('Auto sign-in failed:', signInError);
+        return { data: { user: createUserData.user }, error: signInError };
+      }
+
+      // Return sign-in data which includes session
+      return { data: signInData || { user: createUserData.user } };
+    } catch (err) {
+      console.error('Error creating user:', err);
+      return { error: err };
     }
-
-    return { data: signUpData };
   };
 
   const signOut = async () => { await supabase.auth.signOut(); };

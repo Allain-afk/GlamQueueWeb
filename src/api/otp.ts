@@ -6,7 +6,7 @@ function generateOTP(): string {
 }
 
 // Store OTP in database with expiration (5 minutes)
-export async function createAndStoreOTP(email: string, password: string): Promise<{ code: string; error?: any }> {
+export async function createAndStoreOTP(email: string, password: string): Promise<{ code: string; error?: Error }> {
   const code = generateOTP();
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
 
@@ -25,18 +25,18 @@ export async function createAndStoreOTP(email: string, password: string): Promis
     if (error) {
       // If table doesn't exist, we'll handle it gracefully
       console.error('Error storing OTP:', error);
-      return { code, error };
+      return { code, error: new Error(error.message) };
     }
 
     return { code };
   } catch (err) {
     console.error('Error creating OTP:', err);
-    return { code, error: err };
+    return { code, error: err instanceof Error ? err : new Error('Unknown error') };
   }
 }
 
 // Verify OTP and get stored password
-export async function verifyOTP(email: string, code: string): Promise<{ password?: string; error?: any }> {
+export async function verifyOTP(email: string, code: string): Promise<{ password?: string; error?: Error }> {
   try {
     const { data, error } = await supabase
       .from('email_otps')
@@ -65,13 +65,22 @@ export async function verifyOTP(email: string, code: string): Promise<{ password
     return { password: data.password_hash };
   } catch (err) {
     console.error('Error verifying OTP:', err);
-    return { error: err };
+    return { error: err instanceof Error ? err : new Error('Unknown error') };
   }
 }
 
 // Send OTP via Supabase Edge Function or email service
-export async function sendOTPEmail(email: string, code: string): Promise<{ error?: any }> {
-  const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
+export async function sendOTPEmail(email: string, code: string): Promise<{ code?: string; error?: Error }> {
+  // Always log in development - check both PROD flag and hostname
+  const isProduction = import.meta.env.PROD && window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
+  
+  // ALWAYS log the code in console for development/debugging
+  console.log('%c═══════════════════════════════════════════════════════════', 'font-size: 14px; color: #e91e8c; font-weight: bold;');
+  console.log('%c🔐 OTP VERIFICATION CODE', 'font-size: 20px; font-weight: bold; color: #e91e8c;');
+  console.log('%c═══════════════════════════════════════════════════════════', 'font-size: 14px; color: #e91e8c; font-weight: bold;');
+  console.log(`%cEmail: %c${email}`, 'font-size: 16px; color: #333;', 'font-size: 16px; font-weight: bold; color: #e91e8c;');
+  console.log(`%cCode:  %c${code}`, 'font-size: 16px; color: #333;', 'font-size: 24px; font-weight: bold; color: #e91e8c;');
+  console.log('%c═══════════════════════════════════════════════════════════', 'font-size: 14px; color: #e91e8c; font-weight: bold;');
   
   if (isProduction) {
     // In production, call Supabase Edge Function to send email
@@ -82,27 +91,22 @@ export async function sendOTPEmail(email: string, code: string): Promise<{ error
 
       if (error) {
         console.error('Error calling Edge Function:', error);
-        // Fallback to console log if Edge Function fails
-        console.log('%c🔐 OTP VERIFICATION CODE', 'font-size: 20px; font-weight: bold; color: #e91e8c;');
-        console.log(`%cEmail: ${email}%c\nCode: ${code}`, 'font-size: 16px;', 'font-size: 24px; font-weight: bold; color: #e91e8c;');
-        return { error };
+        console.warn('%c⚠️ Edge Function failed. Code is logged above for testing.', 'font-size: 14px; color: #ff9800;');
+        return { code, error: new Error(error.message || 'Failed to send OTP email') };
       }
 
-      return {};
+      console.log('%c✅ Email sent via Edge Function!', 'font-size: 14px; color: #4caf50;');
+      return { code };
     } catch (err) {
       console.error('Error sending OTP email:', err);
-      // Fallback to console log if Edge Function is not available
-      console.log('%c🔐 OTP VERIFICATION CODE', 'font-size: 20px; font-weight: bold; color: #e91e8c;');
-      console.log(`%cEmail: ${email}%c\nCode: ${code}`, 'font-size: 16px;', 'font-size: 24px; font-weight: bold; color: #e91e8c;');
-      return { error: err };
+      console.warn('%c⚠️ Edge Function not available. Code is logged above for testing.', 'font-size: 14px; color: #ff9800;');
+      return { code, error: err instanceof Error ? err : new Error('Unknown error') };
     }
   } else {
-    // In development, log the code to console
-    console.log('%c🔐 OTP VERIFICATION CODE', 'font-size: 20px; font-weight: bold; color: #e91e8c;');
-    console.log(`%cEmail: ${email}%c\nCode: ${code}`, 'font-size: 16px;', 'font-size: 24px; font-weight: bold; color: #e91e8c;');
-    console.log('%c⚠️ In production, this code would be sent via email!', 'font-size: 14px; color: #ff9800;');
+    // In development, we've already logged above
+    console.log('%c⚠️ Development Mode: Check console for code above', 'font-size: 14px; color: #ff9800;');
   }
   
-  return {};
+  return { code };
 }
 

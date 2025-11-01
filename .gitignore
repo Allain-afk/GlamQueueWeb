@@ -25,6 +25,7 @@ out/
 .env.development.local
 .env.test.local
 supabase-otp-setup.sql
+supabase-profiles-migration.sql
 
 # Logs
 logs
@@ -101,3 +102,4 @@ temp/
 *.md
 !README.md
 EDGE_FUNCTION_CODE.txt
+*.txt

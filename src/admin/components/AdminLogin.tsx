@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import { getMyProfile, createProfile, type Profile } from '../../api/profile';
+import { getMyProfile, type Profile } from '../../api/profile';
 import { isSupabaseConfigured } from '../../lib/supabase';
-import { LogIn, Eye, EyeOff, AlertCircle, UserPlus, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
+import { LogIn, Eye, EyeOff, AlertCircle, UserPlus, ArrowLeft } from 'lucide-react';
 
 interface AdminLoginProps {
   onLoginSuccess: (profile: Profile) => void;
   onClientLogin: () => void;
   onBackToLanding: () => void;
+  onNavigateToOtp: (email: string, password: string) => void;
   initialMode?: 'login' | 'signup';
 }
 
-export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, initialMode = 'login' }: AdminLoginProps) {
+export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, onNavigateToOtp, initialMode = 'login' }: AdminLoginProps) {
   const [isSignUp, setIsSignUp] = useState(initialMode === 'signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,31 +22,8 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [verificationStep, setVerificationStep] = useState<'signup' | 'verify'>('signup');
-  const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
-  const { signInWithEmail, sendOTP, verifyOTPCode } = useAuth();
+  const { signInWithEmail, sendOTP } = useAuth();
 
-  const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) return; // Only allow single digit
-    if (!/^\d*$/.test(value)) return; // Only allow digits
-    
-    const newOtp = [...otpCode];
-    newOtp[index] = value;
-    setOtpCode(newOtp);
-
-    // Auto-focus next input
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-${index - 1}`);
-      prevInput?.focus();
-    }
-  };
 
   const handleSendOtp = async () => {
     if (!email) {
@@ -76,8 +54,11 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
         return;
       }
 
-      setSuccess('A 6-digit verification code has been sent to your email! Please check your inbox. (Also check browser console for development)');
-      setVerificationStep('verify');
+      setSuccess('A 6-digit verification code has been sent to your email! Please check your inbox. Redirecting to verification page...');
+      // Redirect to dedicated OTP verification page
+      setTimeout(() => {
+        onNavigateToOtp(email, password);
+      }, 1500);
     } catch (err) {
       console.error('OTP send error:', err);
       setError(err instanceof Error ? err.message : 'Failed to send verification code');
@@ -87,66 +68,11 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
     }
   };
 
-  const handleVerifyOtp = async () => {
-    const code = otpCode.join('');
-    if (code.length !== 6) {
-      setError('Please enter the complete 6-digit code');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data: verifyData, error: verifyError } = await verifyOTPCode(email, code);
-      
-      if (verifyError) {
-        setError(`Verification failed: ${verifyError.message || 'Invalid or expired code'}`);
-        setLoading(false);
-        return;
-      }
-
-      if (!verifyData?.user) {
-        setError('Verification failed. Please try again.');
-        setLoading(false);
-        return;
-      }
-
-      // Create profile for new user
-      try {
-        await createProfile(verifyData.user.id, verifyData.user.email);
-      } catch (profileError) {
-        console.error('Profile creation error:', profileError);
-        // Continue even if profile creation fails (might already exist)
-      }
-
-      setSuccess('Email verified successfully! Redirecting...');
-      
-      // Get profile and redirect
-      setTimeout(async () => {
-        const profile = await getMyProfile();
-        if (profile) {
-          if (profile.role === 'admin') {
-            onLoginSuccess(profile);
-          } else {
-            onClientLogin();
-          }
-        } else {
-          // New users are always clients
-          onClientLogin();
-        }
-      }, 1500);
-    } catch (err) {
-      console.error('OTP verify error:', err);
-      setError(err instanceof Error ? err.message : 'Verification failed');
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isSignUp && verificationStep === 'signup') {
+    if (isSignUp) {
       // Validate password first
       if (password !== confirmPassword) {
         setError('Passwords do not match');
@@ -158,7 +84,7 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
         return;
       }
 
-      // Send OTP instead of creating account directly
+      // Send OTP and redirect to verification page
       await handleSendOtp();
       return;
     }
@@ -175,10 +101,7 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
     }
 
     try {
-      if (isSignUp) {
-        // This shouldn't happen if verification flow works correctly
-        await handleSendOtp();
-      } else {
+      if (!isSignUp) {
         // Login flow
         console.log('Attempting login with:', email);
         const { error: signInError } = await signInWithEmail(email, password);
@@ -263,109 +186,7 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
             <span>Back to Landing Page</span>
           </button>
 
-          {isSignUp && verificationStep === 'verify' ? (
-            /* Verification Step */
-            <div className="space-y-6">
-              <div className="text-center">
-                <div className="mx-auto h-16 w-16 bg-gradient-to-r from-pink-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg mb-4">
-                  <Mail className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Verify Your Email</h3>
-                <p className="text-sm text-gray-600">
-                  We've sent a 6-digit verification code to
-                </p>
-                <p className="text-sm font-medium text-pink-600 mt-1">{email}</p>
-                <p className="text-xs text-gray-500 mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
-                  💡 <strong>Development Mode:</strong> Check your browser console (F12) for the code
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
-                  Enter Verification Code
-                </label>
-                <div className="flex justify-center gap-3">
-                  {otpCode.map((digit, index) => (
-                    <input
-                      key={index}
-                      id={`otp-${index}`}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(index, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-pink-500 focus:ring-2 focus:ring-pink-200 transition-all"
-                      autoFocus={index === 0}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex">
-                    <AlertCircle className="h-5 w-5 text-red-400" />
-                    <div className="ml-3">
-                      <p className="text-sm text-red-800">{error}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {success && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex">
-                    <CheckCircle className="h-5 w-5 text-green-400" />
-                    <div className="ml-3">
-                      <p className="text-sm text-green-800">{success}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={handleVerifyOtp}
-                  disabled={loading || otpCode.join('').length !== 6}
-                  className="admin-button w-full flex justify-center py-3 px-4 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Verifying...
-                    </div>
-                  ) : (
-                    'Verify Email'
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVerificationStep('signup');
-                    setOtpCode(['', '', '', '', '', '']);
-                    setError(null);
-                    setSuccess(null);
-                  }}
-                  className="w-full flex justify-center py-2 px-4 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  ← Back to Sign Up
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={loading}
-                  className="w-full flex justify-center py-2 px-4 text-sm text-pink-600 hover:text-pink-700 transition-colors font-medium"
-                >
-                  Resend Code
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Sign Up / Login Form */
+          {/* Sign Up / Login Form */}
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div>
@@ -501,8 +322,6 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
                   type="button"
                   onClick={() => {
                     setIsSignUp(!isSignUp);
-                    setVerificationStep('signup');
-                    setOtpCode(['', '', '', '', '', '']);
                     setError(null);
                     setSuccess(null);
                     setPassword('');
@@ -514,7 +333,6 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
                 </button>
               </div>
             </form>
-          )}
         </div>
 
         {!isSignUp && (
