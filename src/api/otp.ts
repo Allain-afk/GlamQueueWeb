@@ -76,7 +76,7 @@ export async function sendOTPEmail(email: string, code: string): Promise<{ error
   if (isProduction) {
     // In production, call Supabase Edge Function to send email
     try {
-      const { data, error } = await supabase.functions.invoke('send-otp-email', {
+      const { error } = await supabase.functions.invoke('send-otp-email', {
         body: { email, code }
       });
 
