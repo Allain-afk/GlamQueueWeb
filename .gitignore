@@ -100,3 +100,4 @@ temp/
 # Documentation files (keep only README.md)
 *.md
 !README.md
+EDGE_FUNCTION_CODE.txt
