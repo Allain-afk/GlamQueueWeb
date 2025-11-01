@@ -71,42 +71,60 @@ export async function verifyOTP(email: string, code: string): Promise<{ password
 
 // Send OTP via Supabase Edge Function or email service
 export async function sendOTPEmail(email: string, code: string): Promise<{ code?: string; error?: Error }> {
-  // Always log in development - check both PROD flag and hostname
-  const isProduction = import.meta.env.PROD && window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
+  // Check if we're in development mode (for console logging)
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1');
   
-  // ALWAYS log the code in console for development/debugging
-  console.log('%c═══════════════════════════════════════════════════════════', 'font-size: 14px; color: #e91e8c; font-weight: bold;');
-  console.log('%c🔐 OTP VERIFICATION CODE', 'font-size: 20px; font-weight: bold; color: #e91e8c;');
-  console.log('%c═══════════════════════════════════════════════════════════', 'font-size: 14px; color: #e91e8c; font-weight: bold;');
-  console.log(`%cEmail: %c${email}`, 'font-size: 16px; color: #333;', 'font-size: 16px; font-weight: bold; color: #e91e8c;');
-  console.log(`%cCode:  %c${code}`, 'font-size: 16px; color: #333;', 'font-size: 24px; font-weight: bold; color: #e91e8c;');
-  console.log('%c═══════════════════════════════════════════════════════════', 'font-size: 14px; color: #e91e8c; font-weight: bold;');
-  
-  if (isProduction) {
-    // In production, call Supabase Edge Function to send email
-    try {
-      const { error } = await supabase.functions.invoke('send-otp-email', {
-        body: { email, code }
-      });
-
-      if (error) {
-        console.error('Error calling Edge Function:', error);
-        console.warn('%c⚠️ Edge Function failed. Code is logged above for testing.', 'font-size: 14px; color: #ff9800;');
-        return { code, error: new Error(error.message || 'Failed to send OTP email') };
-      }
-
-      console.log('%c✅ Email sent via Edge Function!', 'font-size: 14px; color: #4caf50;');
-      return { code };
-    } catch (err) {
-      console.error('Error sending OTP email:', err);
-      console.warn('%c⚠️ Edge Function not available. Code is logged above for testing.', 'font-size: 14px; color: #ff9800;');
-      return { code, error: err instanceof Error ? err : new Error('Unknown error') };
-    }
-  } else {
-    // In development, we've already logged above
-    console.log('%c⚠️ Development Mode: Check console for code above', 'font-size: 14px; color: #ff9800;');
+  // ALWAYS log the code in console for development/debugging (even if email is sent)
+  if (isDevelopment) {
+    console.log('%c═══════════════════════════════════════════════════════════', 'font-size: 14px; color: #e91e8c; font-weight: bold;');
+    console.log('%c🔐 OTP VERIFICATION CODE', 'font-size: 20px; font-weight: bold; color: #e91e8c;');
+    console.log('%c═══════════════════════════════════════════════════════════', 'font-size: 14px; color: #e91e8c; font-weight: bold;');
+    console.log(`%cEmail: %c${email}`, 'font-size: 16px; color: #333;', 'font-size: 16px; font-weight: bold; color: #e91e8c;');
+    console.log(`%cCode:  %c${code}`, 'font-size: 16px; color: #333;', 'font-size: 24px; font-weight: bold; color: #e91e8c;');
+    console.log('%c═══════════════════════════════════════════════════════════', 'font-size: 14px; color: #e91e8c; font-weight: bold;');
+    console.log('%c📧 Attempting to send email via Edge Function...', 'font-size: 14px; color: #2196f3;');
   }
   
-  return { code };
+  // Always try to send via Edge Function (works in both dev and production)
+  try {
+    const { error } = await supabase.functions.invoke('send-otp-email', {
+      body: { email, code }
+    });
+
+    if (error) {
+      console.error('Error calling Edge Function:', error);
+      
+      if (isDevelopment) {
+        console.warn('%c⚠️ Edge Function failed. Check:', 'font-size: 14px; color: #ff9800;');
+        console.warn('1. Edge Function is deployed: supabase functions deploy send-otp-email');
+        console.warn('2. RESEND_API_KEY secret is set in Supabase Dashboard');
+        console.warn('3. Code is logged above for testing');
+      }
+      
+      return { code, error: new Error(error.message || 'Failed to send OTP email') };
+    }
+
+    if (isDevelopment) {
+      console.log('%c✅ Email sent successfully via Edge Function!', 'font-size: 14px; color: #4caf50;');
+      console.log('%c💡 Check your inbox (and spam folder) for the verification email.', 'font-size: 14px; color: #2196f3;');
+      console.log('%c   Code is also logged above for quick testing.', 'font-size: 14px; color: #999;');
+    } else {
+      console.log('✅ Email sent successfully');
+    }
+    
+    return { code };
+  } catch (err) {
+    console.error('Error sending OTP email:', err);
+    
+    if (isDevelopment) {
+      console.warn('%c⚠️ Edge Function call failed. Possible issues:', 'font-size: 14px; color: #ff9800;');
+      console.warn('1. Supabase connection issue');
+      console.warn('2. Edge Function not deployed');
+      console.warn('3. Network error');
+      console.warn('%c   Code is logged above for testing.', 'font-size: 14px; color: #999;');
+    }
+    
+    return { code, error: err instanceof Error ? err : new Error('Unknown error') };
+  }
 }
 

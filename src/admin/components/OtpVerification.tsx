@@ -222,14 +222,16 @@ export function OtpVerification({ email, password, onVerificationSuccess, onBack
 
           <div className="space-y-6">
             <div className="text-center">
-              <p className="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-4">
-                💡 <strong>Development Mode:</strong> Check your browser console (F12) for the code that was sent when you clicked "Send Verification Code"
-              </p>
+              {isDevelopment && (
+                <p className="text-xs text-gray-500 bg-blue-50 border border-blue-200 rounded-lg p-2 mb-4">
+                  💡 <strong>Development Mode:</strong> Email is being sent via Edge Function. The code is also logged in your browser console (F12) for quick testing.
+                </p>
+              )}
               {isDevelopment && displayedCode && (
                 <div className="bg-pink-50 border-2 border-pink-300 rounded-lg p-4 mb-4">
-                  <p className="text-xs text-gray-600 mb-2 font-medium">Your Verification Code:</p>
+                  <p className="text-xs text-gray-600 mb-2 font-medium">Your Verification Code (for quick testing):</p>
                   <p className="text-2xl font-bold text-pink-600 font-mono tracking-wider">{displayedCode}</p>
-                  <p className="text-xs text-gray-500 mt-2">This code is also logged in your browser console</p>
+                  <p className="text-xs text-gray-500 mt-2">Check your email inbox - the code is also sent there!</p>
                 </div>
               )}
             </div>

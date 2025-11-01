@@ -37,13 +37,46 @@ serve(async (req) => {
       )
     }
 
-    // If Resend API key is not configured, return error
+    // Check if Resend API key is configured
     if (!RESEND_API_KEY) {
-      console.error('RESEND_API_KEY is not configured')
+      console.error('RESEND_API_KEY environment variable is not set')
       return new Response(
-        JSON.stringify({ error: 'Email service not configured' }),
+        JSON.stringify({ 
+          error: 'Email service not configured',
+          details: 'RESEND_API_KEY secret is missing. Please set it in Supabase Dashboard > Edge Functions > send-otp-email > Settings > Secrets',
+          fix: 'Go to Supabase Dashboard > Edge Functions > send-otp-email > Settings > Secrets and add RESEND_API_KEY'
+        }),
         {
           status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      )
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid email format' }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      )
+    }
+
+    // Validate code format (should be 6 digits)
+    if (!/^\d{6}$/.test(code)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid code format. Code must be 6 digits' }),
+        {
+          status: 400,
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
@@ -111,9 +144,29 @@ If you didn't request this code, please ignore this email.
     })
 
     if (error) {
-      console.error('Resend error:', error)
+      console.error('Resend API error:', JSON.stringify(error, null, 2))
+      
+      // Provide more helpful error messages
+      let errorMessage = 'Failed to send email'
+      let errorDetails = error
+      
+      if (error.message) {
+        if (error.message.includes('Invalid API key')) {
+          errorMessage = 'Invalid Resend API key. Please check RESEND_API_KEY secret in Supabase Dashboard'
+        } else if (error.message.includes('domain')) {
+          errorMessage = 'Domain verification issue. Please verify your sending domain in Resend Dashboard'
+        } else if (error.message.includes('FROM_EMAIL')) {
+          errorMessage = `Invalid FROM_EMAIL: ${FROM_EMAIL}. Please set a valid FROM_EMAIL secret or verify domain in Resend`
+        }
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to send email', details: error }),
+        JSON.stringify({ 
+          error: errorMessage,
+          details: errorDetails,
+          fromEmail: FROM_EMAIL,
+          fix: 'Check: 1) RESEND_API_KEY is correct, 2) FROM_EMAIL domain is verified in Resend, 3) Resend account is active'
+        }),
         {
           status: 500,
           headers: {
@@ -138,8 +191,16 @@ If you didn't request this code, please ignore this email.
     )
   } catch (error) {
     console.error('Error in send-otp-email function:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: errorMessage,
+        stack: errorStack,
+        fix: 'Check Edge Function logs in Supabase Dashboard for more details'
+      }),
       {
         status: 500,
         headers: {
