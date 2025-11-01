@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import type { Service, Shop, Booking } from '../types';
 import { getServices, getShops } from '../api/services';
 import { getMyBookings, getUpcomingBookings } from '../api/bookings';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../auth/useAuth';
 
 interface ClientContextType {
   services: Service[];

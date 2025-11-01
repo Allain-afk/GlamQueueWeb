@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../auth/useAuth';
 import { getMyProfile, type Profile } from '../../api/profile';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import { LogIn, Eye, EyeOff, AlertCircle, UserPlus, ArrowLeft } from 'lucide-react';

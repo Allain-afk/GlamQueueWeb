@@ -6,7 +6,7 @@ import { BookingScreen } from './screens/BookingScreen';
 import { MySchedule } from './screens/MySchedule';
 import { Profile } from './screens/Profile';
 import { BookingSuccessModal } from './components/BookingSuccessModal';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../auth/useAuth';
 import { getPendingBooking, clearPendingBooking } from '../utils/bookingStorage';
 import { mapBookingDataToIds, parseTimeToDateTime } from '../utils/bookingMapper';
 import { createBooking } from './api/bookings';

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, User, Mail, Calendar, LogOut } from 'lucide-react';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../auth/useAuth';
 import { getMyProfile, type Profile } from '../../api/profile';
 
 interface ProfileProps {

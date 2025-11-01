@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Search, MapPin, Bell, Calendar, Sparkles, Scissors, Palette, User, LogOut, ShoppingBag } from 'lucide-react';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../auth/useAuth';
 import { useClient } from '../context/ClientContext';
 import type { Service } from '../types';
 

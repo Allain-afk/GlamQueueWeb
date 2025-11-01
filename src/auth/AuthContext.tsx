@@ -1,14 +1,15 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Session, User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { createAndStoreOTP, sendOTPEmail, verifyOTP } from '../api/otp';
+import { AuthContext } from './AuthContextInstance';
 
 type AuthResponse = {
   user?: User | null;
   session?: Session | null;
 };
 
-type Ctx = {
+export type Ctx = {
   session: Session | null;
   signInWithEmail: (email: string, password: string) => Promise<{ error?: AuthError }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ data?: AuthResponse; error?: AuthError }>;
@@ -16,8 +17,6 @@ type Ctx = {
   verifyOTPCode: (email: string, code: string) => Promise<{ data?: AuthResponse; error?: Error | AuthError }>;
   signOut: () => Promise<void>;
 };
-
-const AuthContext = createContext<Ctx | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -119,10 +118,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-};
 
