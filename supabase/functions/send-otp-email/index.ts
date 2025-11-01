@@ -1,8 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { Resend } from 'https://esm.sh/resend@2.0.0'
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || ''
-const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'onboarding@resend.dev'
+// Brevo API configuration (no domain required!)
+const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY') || ''
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@glamqueue.com'
+const FROM_NAME = Deno.env.get('FROM_NAME') || 'GlamQueue'
 
 interface RequestBody {
   email: string
@@ -37,14 +38,14 @@ serve(async (req) => {
       )
     }
 
-    // Check if Resend API key is configured
-    if (!RESEND_API_KEY) {
-      console.error('RESEND_API_KEY environment variable is not set')
+    // Check if Brevo API key is configured
+    if (!BREVO_API_KEY) {
+      console.error('BREVO_API_KEY environment variable is not set')
       return new Response(
         JSON.stringify({ 
           error: 'Email service not configured',
-          details: 'RESEND_API_KEY secret is missing. Please set it in Supabase Dashboard > Edge Functions > send-otp-email > Settings > Secrets',
-          fix: 'Go to Supabase Dashboard > Edge Functions > send-otp-email > Settings > Secrets and add RESEND_API_KEY'
+          details: 'BREVO_API_KEY secret is missing. Please set it in Supabase Dashboard > Edge Functions > send-otp-email > Settings > Secrets',
+          fix: 'Go to Supabase Dashboard > Edge Functions > send-otp-email > Settings > Secrets and add BREVO_API_KEY. Get your API key from https://app.brevo.com/settings/keys/api'
         }),
         {
           status: 500,
@@ -85,8 +86,7 @@ serve(async (req) => {
       )
     }
 
-    const resend = new Resend(RESEND_API_KEY)
-
+    // Prepare email HTML and text content
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -135,28 +135,65 @@ If you didn't request this code, please ignore this email.
 © ${new Date().getFullYear()} GlamQueue. All rights reserved.
     `
 
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: email,
-      subject: 'Your GlamQueue Verification Code',
-      html: emailHtml,
-      text: emailText,
+    // Send email via Brevo API
+    const brevoUrl = 'https://api.brevo.com/v3/smtp/email'
+    
+    const response = await fetch(brevoUrl, {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': BREVO_API_KEY,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: {
+          name: FROM_NAME,
+          email: FROM_EMAIL,
+        },
+        to: [
+          {
+            email: email,
+          },
+        ],
+        subject: 'Your GlamQueue Verification Code',
+        htmlContent: emailHtml,
+        textContent: emailText,
+      }),
     })
 
-    if (error) {
-      console.error('Resend API error:', JSON.stringify(error, null, 2))
+    // Parse response - handle both success and error cases
+    let responseData: any = {}
+    try {
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        responseData = await response.json()
+      } else {
+        const text = await response.text()
+        if (text) {
+          responseData = JSON.parse(text)
+        }
+      }
+    } catch (parseError) {
+      console.error('Failed to parse Brevo API response:', parseError)
+      responseData = { message: 'Invalid response from email service' }
+    }
+
+    if (!response.ok) {
+      console.error('Brevo API error:', JSON.stringify(responseData, null, 2))
       
-      // Provide more helpful error messages
       let errorMessage = 'Failed to send email'
-      let errorDetails = error
+      let errorDetails = responseData
+      let fixInstructions = 'Check: 1) BREVO_API_KEY is correct, 2) FROM_EMAIL is set, 3) Brevo account is active'
       
-      if (error.message) {
-        if (error.message.includes('Invalid API key')) {
-          errorMessage = 'Invalid Resend API key. Please check RESEND_API_KEY secret in Supabase Dashboard'
-        } else if (error.message.includes('domain')) {
-          errorMessage = 'Domain verification issue. Please verify your sending domain in Resend Dashboard'
-        } else if (error.message.includes('FROM_EMAIL')) {
-          errorMessage = `Invalid FROM_EMAIL: ${FROM_EMAIL}. Please set a valid FROM_EMAIL secret or verify domain in Resend`
+      if (responseData.message) {
+        if (responseData.message.includes('Invalid API key') || responseData.message.includes('unauthorized')) {
+          errorMessage = 'Invalid Brevo API key. Please check BREVO_API_KEY secret in Supabase Dashboard'
+          fixInstructions = 'Get your API key from https://app.brevo.com/settings/keys/api and add it as BREVO_API_KEY secret'
+        } else if (responseData.message.includes('sender')) {
+          errorMessage = `Invalid sender email: ${FROM_EMAIL}. Please set a valid FROM_EMAIL secret`
+        } else if (responseData.message.includes('quota') || responseData.message.includes('limit')) {
+          errorMessage = 'Brevo email quota exceeded. Free tier allows 300 emails/day'
+          fixInstructions = 'Wait for daily reset or upgrade your Brevo plan'
         }
       }
       
@@ -165,7 +202,7 @@ If you didn't request this code, please ignore this email.
           error: errorMessage,
           details: errorDetails,
           fromEmail: FROM_EMAIL,
-          fix: 'Check: 1) RESEND_API_KEY is correct, 2) FROM_EMAIL domain is verified in Resend, 3) Resend account is active'
+          fix: fixInstructions
         }),
         {
           status: 500,
@@ -177,10 +214,13 @@ If you didn't request this code, please ignore this email.
       )
     }
 
-    console.log('Email sent successfully:', data)
+    console.log('Email sent successfully via Brevo:', responseData)
+
+    // Brevo returns messageId in the response
+    const messageId = responseData.messageId || responseData.id || 'unknown'
 
     return new Response(
-      JSON.stringify({ success: true, messageId: data?.id }),
+      JSON.stringify({ success: true, messageId }),
       {
         status: 200,
         headers: {

@@ -97,7 +97,7 @@ export async function sendOTPEmail(email: string, code: string): Promise<{ code?
       if (isDevelopment) {
         console.warn('%c⚠️ Edge Function failed. Check:', 'font-size: 14px; color: #ff9800;');
         console.warn('1. Edge Function is deployed: supabase functions deploy send-otp-email');
-        console.warn('2. RESEND_API_KEY secret is set in Supabase Dashboard');
+        console.warn('2. BREVO_API_KEY secret is set in Supabase Dashboard');
         console.warn('3. Code is logged above for testing');
       }
       
