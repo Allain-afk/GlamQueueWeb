@@ -18,20 +18,11 @@ export function OtpVerification({ email, password, onVerificationSuccess, onBack
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [displayedCode, setDisplayedCode] = useState<string | null>(null);
-  const [isDevelopment, setIsDevelopment] = useState(false);
   const { sendOTP, verifyOTPCode } = useAuth();
-
-  // Check if we're in development mode
-  useEffect(() => {
-    const isDev = window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1');
-    setIsDevelopment(isDev);
-  }, []);
 
   // Don't auto-send OTP - AdminLogin already sends it before redirecting
   // This prevents duplicate OTPs due to React StrictMode double-invocation
   // Users can manually click "Resend Code" if needed
-  // Note: The code from AdminLogin is already logged in console
 
   // Countdown timer effect
   useEffect(() => {
@@ -69,7 +60,6 @@ export function OtpVerification({ email, password, onVerificationSuccess, onBack
     setLoading(true);
     setError(null);
     setSuccess(null);
-    // Don't reset displayedCode - keep the last one visible
 
     if (!isSupabaseConfigured) {
       setError('Configuration Error: Supabase environment variables are not set.');
@@ -78,7 +68,7 @@ export function OtpVerification({ email, password, onVerificationSuccess, onBack
     }
 
     try {
-      const { code: otpCodeValue, error: otpError } = await sendOTP(email, password);
+      const { error: otpError } = await sendOTP(email, password);
       
       if (otpError) {
         const errorMessage = otpError.message || 'Unknown error';
@@ -87,17 +77,8 @@ export function OtpVerification({ email, password, onVerificationSuccess, onBack
         } else {
           setError(`Failed to send verification code: ${errorMessage}`);
         }
-        // Still set the code if we got it (even with error)
-        if (otpCodeValue) {
-          setDisplayedCode(otpCodeValue);
-        }
         setLoading(false);
         return;
-      }
-
-      // Store the code for display in development mode
-      if (otpCodeValue) {
-        setDisplayedCode(otpCodeValue);
       }
 
       setSuccess('A 6-digit verification code has been sent to your email! Please check your inbox.');
@@ -221,21 +202,6 @@ export function OtpVerification({ email, password, onVerificationSuccess, onBack
           </button>
 
           <div className="space-y-6">
-            <div className="text-center">
-              {isDevelopment && (
-                <p className="text-xs text-gray-500 bg-blue-50 border border-blue-200 rounded-lg p-2 mb-4">
-                  💡 <strong>Development Mode:</strong> Email is being sent via Edge Function. The code is also logged in your browser console (F12) for quick testing.
-                </p>
-              )}
-              {isDevelopment && displayedCode && (
-                <div className="bg-pink-50 border-2 border-pink-300 rounded-lg p-4 mb-4">
-                  <p className="text-xs text-gray-600 mb-2 font-medium">Your Verification Code (for quick testing):</p>
-                  <p className="text-2xl font-bold text-pink-600 font-mono tracking-wider">{displayedCode}</p>
-                  <p className="text-xs text-gray-500 mt-2">Check your email inbox - the code is also sent there!</p>
-                </div>
-              )}
-            </div>
-
             <div className="space-y-4">
               <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
                 Enter Verification Code
