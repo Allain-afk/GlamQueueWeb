@@ -138,6 +138,30 @@ If you didn't request this code, please ignore this email.
     // Send email via Brevo API
     const brevoUrl = 'https://api.brevo.com/v3/smtp/email'
     
+    // Log request details (without sensitive data)
+    console.log('Sending email via Brevo:', {
+      to: email,
+      from: FROM_EMAIL,
+      fromName: FROM_NAME,
+      apiKeyPrefix: BREVO_API_KEY.substring(0, 10) + '...',
+      apiKeyLength: BREVO_API_KEY.length
+    })
+    
+    const requestBody = {
+      sender: {
+        name: FROM_NAME,
+        email: FROM_EMAIL,
+      },
+      to: [
+        {
+          email: email,
+        },
+      ],
+      subject: 'Your GlamQueue Verification Code',
+      htmlContent: emailHtml,
+      textContent: emailText,
+    }
+    
     const response = await fetch(brevoUrl, {
       method: 'POST',
       headers: {
@@ -145,38 +169,35 @@ If you didn't request this code, please ignore this email.
         'api-key': BREVO_API_KEY,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        sender: {
-          name: FROM_NAME,
-          email: FROM_EMAIL,
-        },
-        to: [
-          {
-            email: email,
-          },
-        ],
-        subject: 'Your GlamQueue Verification Code',
-        htmlContent: emailHtml,
-        textContent: emailText,
-      }),
+      body: JSON.stringify(requestBody),
     })
+    
+    console.log('Brevo API response status:', response.status, response.statusText)
 
     // Parse response - handle both success and error cases
     let responseData: any = {}
     try {
       const contentType = response.headers.get('content-type')
+      const responseText = await response.text()
+      
+      console.log('Brevo API response content-type:', contentType)
+      console.log('Brevo API response body:', responseText.substring(0, 500)) // Log first 500 chars
+      
       if (contentType && contentType.includes('application/json')) {
-        responseData = await response.json()
-      } else {
-        const text = await response.text()
-        if (text) {
-          responseData = JSON.parse(text)
+        responseData = JSON.parse(responseText)
+      } else if (responseText) {
+        try {
+          responseData = JSON.parse(responseText)
+        } catch {
+          responseData = { message: responseText || 'Unknown error' }
         }
       }
     } catch (parseError) {
       console.error('Failed to parse Brevo API response:', parseError)
       responseData = { message: 'Invalid response from email service' }
     }
+    
+    console.log('Parsed Brevo response data:', JSON.stringify(responseData, null, 2))
 
     if (!response.ok) {
       console.error('Brevo API error:', JSON.stringify(responseData, null, 2))
@@ -214,21 +235,47 @@ If you didn't request this code, please ignore this email.
       )
     }
 
-    console.log('Email sent successfully via Brevo:', responseData)
+    // Check if Brevo actually returned success
+    // Brevo returns 201 Created on success, not 200
+    if (response.status === 201 || response.status === 200) {
+      console.log('Email sent successfully via Brevo:', responseData)
 
-    // Brevo returns messageId in the response
-    const messageId = responseData.messageId || responseData.id || 'unknown'
-
-    return new Response(
-      JSON.stringify({ success: true, messageId }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      }
-    )
+      // Brevo returns messageId in the response
+      const messageId = responseData.messageId || responseData.id || 'unknown'
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          messageId,
+          status: response.status,
+          brevoResponse: responseData
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      )
+    } else {
+      // Unexpected status code
+      console.error('Unexpected Brevo API status:', response.status, responseData)
+      return new Response(
+        JSON.stringify({ 
+          error: 'Email service returned unexpected status',
+          details: responseData,
+          status: response.status
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      )
+    }
   } catch (error) {
     console.error('Error in send-otp-email function:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
