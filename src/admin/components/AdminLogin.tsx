@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { getMyProfile, createProfile, type Profile } from '../../api/profile';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { LogIn, Eye, EyeOff, AlertCircle, UserPlus, ArrowLeft } from 'lucide-react';
 
 interface AdminLoginProps {
@@ -28,6 +29,13 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
     setError(null);
     setSuccess(null);
 
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured) {
+      setError('Configuration Error: Supabase environment variables are not set. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Vercel project settings.');
+      setLoading(false);
+      return;
+    }
+
     try {
       if (isSignUp) {
         // Sign up flow
@@ -48,7 +56,13 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
         
         if (signUpError) {
           console.error('Sign up error:', signUpError);
-          setError(`Sign up failed: ${signUpError.message}`);
+          // Check for network errors
+          const errorMessage = signUpError.message || 'Unknown error';
+          if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('fetch')) {
+            setError('Network Error: Unable to connect to Supabase. Please check your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel environment variables.');
+          } else {
+            setError(`Sign up failed: ${errorMessage}`);
+          }
           return;
         }
 
@@ -86,7 +100,13 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
         
         if (signInError) {
           console.error('Sign in error:', signInError);
-          setError(`Login failed: ${signInError.message}`);
+          // Check for network errors
+          const errorMessage = signInError.message || 'Unknown error';
+          if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('fetch')) {
+            setError('Network Error: Unable to connect to Supabase. Please check your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel environment variables. Go to Vercel Dashboard > Settings > Environment Variables.');
+          } else {
+            setError(`Login failed: ${errorMessage}`);
+          }
           return;
         }
 
@@ -113,7 +133,14 @@ export function AdminLogin({ onLoginSuccess, onClientLogin, onBackToLanding, ini
       }
     } catch (err) {
       console.error('Auth error:', err);
-      setError(err instanceof Error ? err.message : (isSignUp ? 'Sign up failed' : 'Login failed'));
+      const errorMessage = err instanceof Error ? err.message : (isSignUp ? 'Sign up failed' : 'Login failed');
+      
+      // Check for network errors in catch block
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('fetch')) {
+        setError('Network Error: Unable to connect to Supabase. Please check your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel environment variables. Go to Vercel Dashboard > Settings > Environment Variables.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
