@@ -119,8 +119,18 @@ export function BookingScreen({ service, onBack, onBookingComplete }: BookingScr
           {/* Left Column - Service Info */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden sticky top-24">
-              <div className="h-48 bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
-                <Calendar className="w-20 h-20 text-white" />
+              <div className="h-48 bg-gradient-to-br from-pink-400 to-purple-500 relative overflow-hidden">
+                {service.image_url ? (
+                  <img 
+                    src={service.image_url} 
+                    alt={service.name} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Calendar className="w-20 h-20 text-white opacity-50" />
+                  </div>
+                )}
               </div>
               <div className="p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-2">{service.name}</h2>

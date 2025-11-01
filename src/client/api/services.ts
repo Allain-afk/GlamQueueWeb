@@ -14,6 +14,7 @@ const mockServices: Service[] = [
     shop_name: 'Glam Studio Manila',
     shop_address: 'Makati City, Metro Manila',
     rating: 4.8,
+    image_url: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=800&h=600&fit=crop',
   },
   {
     id: '2',
@@ -26,6 +27,7 @@ const mockServices: Service[] = [
     shop_name: 'Glam Studio Manila',
     shop_address: 'Makati City, Metro Manila',
     rating: 4.9,
+    image_url: 'https://images.unsplash.com/photo-1560869713-9ca0e9e2c77e?w=800&h=600&fit=crop',
   },
   {
     id: '3',
@@ -38,6 +40,7 @@ const mockServices: Service[] = [
     shop_name: 'Beauty Lounge BGC',
     shop_address: 'Bonifacio Global City, Taguig',
     rating: 4.7,
+    image_url: 'https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=800&h=600&fit=crop',
   },
   {
     id: '4',
@@ -50,6 +53,7 @@ const mockServices: Service[] = [
     shop_name: 'Beauty Lounge BGC',
     shop_address: 'Bonifacio Global City, Taguig',
     rating: 4.8,
+    image_url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&h=600&fit=crop',
   },
   {
     id: '5',
@@ -62,6 +66,7 @@ const mockServices: Service[] = [
     shop_name: 'Nail Spa Quezon City',
     shop_address: 'Quezon City, Metro Manila',
     rating: 4.6,
+    image_url: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=800&h=600&fit=crop',
   },
   {
     id: '6',
@@ -74,6 +79,7 @@ const mockServices: Service[] = [
     shop_name: 'Nail Spa Quezon City',
     shop_address: 'Quezon City, Metro Manila',
     rating: 4.5,
+    image_url: 'https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=800&h=600&fit=crop',
   },
 ];
 

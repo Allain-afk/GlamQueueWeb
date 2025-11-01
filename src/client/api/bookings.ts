@@ -10,22 +10,6 @@ export async function createBooking(booking: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  // Return mock booking for now
-  const mockBooking: Booking = {
-    id: 'mock-' + Date.now(),
-    user_id: user.id,
-    service_id: booking.service_id,
-    shop_id: booking.shop_id,
-    date_time: booking.date_time,
-    status: 'pending',
-    notes: booking.notes,
-    created_at: new Date().toISOString(),
-  };
-  
-  return Promise.resolve(mockBooking);
-  
-  // Uncomment when database is ready:
-  /*
   const { data, error } = await supabase
     .from('bookings')
     .insert([
@@ -38,23 +22,24 @@ export async function createBooking(booking: {
         notes: booking.notes,
       },
     ])
-    .select('*')
+    .select(`
+      *,
+      service:services(*),
+      shop:shops(*)
+    `)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Booking creation error:', error);
+    throw error;
+  }
   return data as Booking;
-  */
 }
 
 export async function getMyBookings(): Promise<Booking[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return []; // Return empty array if not authenticated
 
-  // Return empty array for now (mock data mode)
-  return Promise.resolve([]);
-  
-  // Uncomment when database is ready:
-  /*
   const { data, error } = await supabase
     .from('bookings')
     .select(`
@@ -65,20 +50,21 @@ export async function getMyBookings(): Promise<Booking[]> {
     .eq('user_id', user.id)
     .order('date_time', { ascending: false });
 
-  if (error) throw error;
-  return data as Booking[];
-  */
+  if (error) {
+    console.error('Error fetching bookings:', error);
+    // Return empty array if table doesn't exist yet
+    if (error.code === 'PGRST116' || error.message.includes('relation') || error.message.includes('does not exist')) {
+      return [];
+    }
+    throw error;
+  }
+  return (data || []) as Booking[];
 }
 
 export async function getUpcomingBookings(): Promise<Booking[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return []; // Return empty array if not authenticated
 
-  // Return empty array for now (mock data mode)
-  return Promise.resolve([]);
-  
-  // Uncomment when database is ready:
-  /*
   const now = new Date().toISOString();
 
   const { data, error } = await supabase
@@ -93,9 +79,15 @@ export async function getUpcomingBookings(): Promise<Booking[]> {
     .in('status', ['pending', 'confirmed'])
     .order('date_time', { ascending: true });
 
-  if (error) throw error;
-  return data as Booking[];
-  */
+  if (error) {
+    console.error('Error fetching upcoming bookings:', error);
+    // Return empty array if table doesn't exist yet
+    if (error.code === 'PGRST116' || error.message.includes('relation') || error.message.includes('does not exist')) {
+      return [];
+    }
+    throw error;
+  }
+  return (data || []) as Booking[];
 }
 
 export async function cancelBooking(bookingId: string): Promise<void> {
