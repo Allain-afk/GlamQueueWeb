@@ -1,7 +1,7 @@
 # GlamQueue
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/YOUR_USERNAME/glamqueue-landing)
-
+Live Demo: https://glam-queue-web.vercel.app
 A modern, responsive landing page and salon management platform built with React, TypeScript, and Vite.
 
 ## 🚀 Quick Start
